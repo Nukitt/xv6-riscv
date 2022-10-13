@@ -12,7 +12,7 @@ sys_exit(void)
   int n;
   argint(0, &n);
   exit(n);
-  return 0;  // not reached
+  return 0; // not reached
 }
 
 uint64
@@ -43,7 +43,7 @@ sys_sbrk(void)
 
   argint(0, &n);
   addr = myproc()->sz;
-  if(growproc(n) < 0)
+  if (growproc(n) < 0)
     return -1;
   return addr;
 }
@@ -57,8 +57,10 @@ sys_sleep(void)
   argint(0, &n);
   acquire(&tickslock);
   ticks0 = ticks;
-  while(ticks - ticks0 < n){
-    if(killed(myproc())){
+  while (ticks - ticks0 < n)
+  {
+    if (killed(myproc()))
+    {
       release(&tickslock);
       return -1;
     }
@@ -95,6 +97,36 @@ sys_trace(void)
 {
   int mask;
   argint(0, &mask);
+  if (mask < 0)
+    return -1;
   myproc()->mask = mask;
+  return 0;
+}
+
+uint64 sys_sigalarm(void)
+{
+  uint64 addr;
+  int ticks;
+  argint(0, &ticks);
+  if (ticks < 0)
+    return -1;
+  argaddr(1, &addr);
+  if (addr < 0)
+    return -1;
+  myproc()->totalticks = ticks;
+  myproc()->handler = addr;
+
+  return 0;
+}
+
+uint64 sys_sigreturn(void)
+{
+  struct proc *p = myproc();
+  memmove(p->trapframe, p->alarm_trapframe, PGSIZE);
+
+  kfree(p->alarm_trapframe);
+  p->alarm_trapframe = 0;
+  p->alarm_on = 0;
+  p->currentticks = 0;
   return 0;
 }
