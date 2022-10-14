@@ -116,7 +116,9 @@ struct proc {
   int totalticks;
   int currentticks;
   int alarm_on;
-
+  
+  int tickets;
+  
   uint64 start_time;
   uint64 sleep_time;
   uint64 n_runs;         

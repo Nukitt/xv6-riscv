@@ -333,6 +333,41 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   return -1;
 }
 
+
+int page_handler(pagetable_t pagetable, uint64 va) {
+  va = PGROUNDDOWN(va);
+
+  pte_t *pte = walk(pagetable, va, 0);
+  if (pte == 0) {
+    return -1;
+  }
+  if (!(*pte & PTE_COW)) {
+    return -2;
+  }
+  char* mem;
+
+  uint64 pa = PTE2PA(*pte);
+  uint flags = (PTE_FLAGS(*pte) & ~PTE_COW) | PTE_W;
+
+
+  if((mem = kalloc()) == 0)
+  {
+    return -3;
+  }
+
+  memmove(mem, (char*)pa, PGSIZE);
+
+  kfree((void*)pa);
+
+  *pte = PA2PTE(mem) | flags;
+
+  // printf("remap va %p from pa %p to %p\n", va, pa, mem);
+  return 0;
+}
+
+
+
+
 // mark a PTE invalid for user access.
 // used by exec for the user stack guard page.
 void
@@ -438,30 +473,6 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
-int handle_page_fault(pagetable_t pagetable, uint64 va) {
-  va = PGROUNDDOWN(va);
 
-  pte_t *pte = walk(pagetable, va, 0);
-  if (pte == 0) {
-    return -1;
-  }
-  if (!(*pte & PTE_COW)) {
-    return -2;
-  }
 
-  uint64 pa = PTE2PA(*pte);
-  uint flags = (PTE_FLAGS(*pte) & ~PTE_COW) | PTE_W;
 
-  char* mem;
-
-  if((mem = kalloc()) == 0) return -3;
-
-  memmove(mem, (char*)pa, PGSIZE);
-
-  kfree((void*)pa);
-
-  *pte = PA2PTE(mem) | flags;
-
-  // printf("remap va %p from pa %p to %p\n", va, pa, mem);
-  return 0;
-}

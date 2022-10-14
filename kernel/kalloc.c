@@ -25,7 +25,7 @@ struct {
 
 void* pa_start = 0;
 void* rc_start = 0;
-static int debug = 0;
+// static int debug = 0;
 
 void
 kinit()
@@ -44,6 +44,7 @@ uint32* get_ref(void* pa) {
   return p + (pa - pa_start) / PGSIZE;
 }
 
+
 uint32 inc_ref(void* pa) {
   // if (debug) printf("++ %p\n", pa);
   return ++(*get_ref(pa));
@@ -54,16 +55,19 @@ uint32 dec_ref(void* pa) {
   return --(*get_ref(pa));
 }
 
+
+
+
 void
 freerange(void *pa_start, void *pa_end)
 {
   char *p;
   p = (char*)PGROUNDUP((uint64)pa_start);
-  for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE) {
+  for(; p  <= (char*)pa_end - PGSIZE; p += PGSIZE) {
     inc_ref(p);
     kfree(p);
   }
-  debug = 1;
+  // debug = 1;
 }
 
 // Free the page of physical memory pointed at by pa,
@@ -79,7 +83,7 @@ kfree(void *pa)
     panic("kfree");
 
   acquire(&kmem.lock);
-  if (dec_ref(pa) != 0) {
+  if (dec_ref(pa)) {
     release(&kmem.lock);
     return;
   }

@@ -534,6 +534,27 @@ update_time()
   }
 }
 
+#define RAND_MAX 32767
+
+int random_at_most(int max) {
+  uint32
+    // max <= RAND_MAX < ULONG_MAX, so this is okay.
+    num_bins = (uint32) max + 1,
+    num_rand = (uint32) RAND_MAX + 1,
+    bin_size = num_rand / num_bins,
+    defect   = num_rand % num_bins;
+
+  int x;
+  do {
+    x = ticks;
+  }
+  // This is carefully written not to overflow
+  while (num_rand - defect <= (uint32)x);
+
+  // Truncated division is intentional
+  return x/bin_size;
+}
+
 
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -576,37 +597,86 @@ scheduler(void)
   for(;;){
       // Avoid deadlock by ensuring that devices can interrupt.
       intr_on();
-      struct proc* first_proc;
-      first_proc = 0;
+      struct proc* earliest_p;
+      earliest_p = 0;
+      // earliest_p->cur_time = 0xffffffff;
       for(p = proc; p < &proc[NPROC]; p++) {
         acquire(&p->lock);
         if(p->state == RUNNABLE) {
-          if(!first_proc || p->crt_time < first_proc->crt_time){
+          if( earliest_p == 0) {
+            earliest_p = p;
+            continue;
+          }
+          else if(earliest_p->cur_time > p->cur_time){
+            release(&earliest_p->lock);
 
-            if(first_proc != 0){
-              release(&first_proc->lock);
-            }
-
-            first_proc = p;
+            earliest_p = p;
             continue;
           }
         }
         release(&p->lock);
       }
 
-      if(first_proc != 0){
+      if(earliest_p != 0){
 
-        first_proc->state = RUNNING;
-        c->proc = first_proc;
-        swtch(&c->context, &first_proc->context);
+        earliest_p->state = RUNNING;
+        c->proc = earliest_p;
+        swtch(&c->context, &earliest_p->context);
         c->proc = 0;
 
-        release(&first_proc->lock);
+        release(&earliest_p->lock);
       }
     }
 
   #endif
 
+  #ifdef LBS
+  //lottery based scheduler 
+  for(;;){
+    // Avoid deadlock by ensuring that devices can interrupt.
+    intr_on();
+    struct proc* chosen_p;
+    chosen_p = 0;
+    int total_tickets = 0;
+    for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if(p->state == RUNNABLE) {
+        total_tickets += p->tickets;
+      }
+      release(&p->lock);
+    }
+
+    if(total_tickets == 0){
+      continue;
+    }
+
+    int chosen_ticket = random_at_most(total_tickets);
+    int cur_ticket = 0;
+    for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if(p->state == RUNNABLE) {
+        cur_ticket += p->tickets;
+        if(cur_ticket >= chosen_ticket){
+          chosen_p = p;
+          break;
+        }
+      }
+      release(&p->lock);
+    }
+
+    if(chosen_p != 0){
+      if(chosen_p->state == RUNNABLE)
+      {
+      chosen_p->state = RUNNING;
+      c->proc = chosen_p;
+      swtch(&c->context, &chosen_p->context);
+      c->proc = 0;
+      }
+      release(&chosen_p->lock);
+    }
+  }
+  #endif
+  
   #ifdef PBS
     for(;;){
       // Avoid deadlock by ensuring that devices can interrupt.
@@ -686,7 +756,7 @@ scheduler(void)
 
       }
     }
-
+    
   #endif
 }
 
