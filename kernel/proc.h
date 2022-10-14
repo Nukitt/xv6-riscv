@@ -116,4 +116,5 @@ struct proc {
   int totalticks;
   int currentticks;
   int alarm_on;
+  int tickets;
 };

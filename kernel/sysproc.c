@@ -147,3 +147,13 @@ uint64 sys_sigreturn(void)
   p->currentticks = 0;
   return p->trapframe->a0;
 }
+
+uint64 sys_settickets(void)
+{
+  int tickets;
+  argint(0, &tickets);
+  if (tickets < 0)
+    return -1;
+  myproc()->tickets = tickets;
+  return 0;
+}
