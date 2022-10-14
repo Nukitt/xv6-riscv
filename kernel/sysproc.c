@@ -36,6 +36,23 @@ sys_wait(void)
 }
 
 uint64
+sys_waitx(void)
+{
+  uint64 addr, addr1, addr2;
+  uint w_time, r_time;
+  argaddr(0, &addr);
+  argaddr(1, &addr1); // user virtual memory
+  argaddr(2, &addr2);
+  int ret = waitx(addr, &w_time, &r_time);
+  struct proc* p = myproc();
+  if (copyout(p->pagetable, addr1,(char*)&w_time, sizeof(int)) < 0)
+    return -1;
+  if (copyout(p->pagetable, addr2,(char*)&r_time, sizeof(int)) < 0)
+    return -1;
+  return ret;
+}
+
+uint64
 sys_sbrk(void)
 {
   uint64 addr;
@@ -128,5 +145,5 @@ uint64 sys_sigreturn(void)
   p->alarm_trapframe = 0;
   p->alarm_on = 0;
   p->currentticks = 0;
-  return 0;
+  return p->trapframe->a0;
 }

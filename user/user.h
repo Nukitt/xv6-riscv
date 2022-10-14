@@ -25,6 +25,7 @@ int uptime(void);
 int trace(int);
 int sigalarm(int tickcount, void (*handler)());
 int sigreturn(void);
+int waitx(int*, int* /*wtime*/, int* /*rtime*/);
 
 // ulib.c
 int stat(const char*, struct stat*);

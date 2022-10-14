@@ -65,7 +65,14 @@ usertrap(void)
     intr_on();
 
     syscall();
-  } else if((which_dev = devintr()) != 0){
+  } else if (r_scause() == 13 || r_scause() == 15) {
+    int ret = 0;
+    if ((ret = handle_page_fault(p->pagetable, r_stval())) != 0) {
+      p->killed = 1;
+      printf("failed to handle page fault %d, pid=%d sepc=%p stval=%p\n",
+        ret, p->pid, r_sepc(), r_stval());
+    }
+  }  else if((which_dev = devintr()) != 0){
     // ok
     if (which_dev == 2 && p->alarm_on == 0) {
       p->alarm_on = 1;
@@ -85,10 +92,11 @@ usertrap(void)
   if(killed(p))
     exit(-1);
 
-  // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
-    yield();
-
+  #ifndef FCFS
+    // give up the CPU if this is a timer interrupt.
+    if(which_dev == 2)
+      yield();
+  #endif
   usertrapret();
 }
 
@@ -158,11 +166,14 @@ kerneltrap()
     printf("sepc=%p stval=%p\n", r_sepc(), r_stval());
     panic("kerneltrap");
   }
+  #ifndef FCFS
 
-  // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
-    yield();
+    // give up the CPU if this is a timer interrupt.
+    if(which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
+      yield();
 
+  #endif
+    
   // the yield() may have caused some traps to occur,
   // so restore trap registers for use by kernelvec.S's sepc instruction.
   w_sepc(sepc);
@@ -174,6 +185,7 @@ clockintr()
 {
   acquire(&tickslock);
   ticks++;
+  update_time();
   wakeup(&ticks);
   release(&tickslock);
 }

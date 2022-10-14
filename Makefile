@@ -127,9 +127,11 @@ UPROGS=\
 	$U/_ls\
 	$U/_mkdir\
 	$U/_rm\
+	$U/_schedulertest\
 	$U/_sh\
 	$U/_strace\
 	$U/_stressfs\
+	$U/_time\
 	$U/_usertests\
 	$U/_grind\
 	$U/_wc\
@@ -154,6 +156,13 @@ GDBPORT = $(shell expr `id -u` % 5000 + 25000)
 QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
+
+ifndef SCHDFLAG
+SCHDFLAG := RR
+endif
+
+CFLAGS += -D $(SCHDFLAG)
+
 ifndef CPUS
 CPUS := 3
 endif

@@ -104,7 +104,12 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  
   int mask;
+
+  uint run_time;                   // How long the process ran for
+  uint cur_time;                   // When was the process created 
+  uint end_time;                   // When did the process exited
 
   uint64 handler;
   struct trapframe *alarm_trapframe;

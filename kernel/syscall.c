@@ -104,6 +104,7 @@ extern uint64 sys_close(void);
 extern uint64 sys_trace(void);
 extern uint64 sys_sigalarm(void);
 extern uint64 sys_sigreturn(void);
+extern uint64 sys_waitx(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -132,6 +133,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_trace]   sys_trace,
 [SYS_sigalarm]    sys_sigalarm,
 [SYS_sigreturn]   sys_sigreturn,
+[SYS_waitx]   sys_waitx
 };
 
 // Array of names for system calls.
@@ -158,6 +160,9 @@ static char *syscall_name[] = {
 [SYS_mkdir]   "mkdir",
 [SYS_close]   "close",
 [SYS_trace]   "trace",
+[SYS_sigalarm]    "sigalarm",
+[SYS_sigreturn]   "sigreturn",
+[SYS_waitx]   "waitx"
 };
 
 // Array of number of arguments for each system call.
@@ -184,6 +189,9 @@ static int syscall_nargs[] = {
 [SYS_mkdir]   1,
 [SYS_close]   1,
 [SYS_trace]   1,
+[SYS_sigalarm]    2,
+[SYS_sigreturn]   0,
+[SYS_waitx]   2
 };
 
 void
