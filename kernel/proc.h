@@ -107,14 +107,20 @@ struct proc {
   
   int mask;
 
-  uint run_time;                   // How long the process ran for
-  uint cur_time;                   // When was the process created 
-  uint end_time;                   // When did the process exited
+  uint run_time;
+  uint crt_time;
+  uint end_time;
 
   uint64 handler;
   struct trapframe *alarm_trapframe;
   int totalticks;
   int currentticks;
   int alarm_on;
+  
   int tickets;
+  
+  uint64 start_time;
+  uint64 sleep_time;
+  uint64 n_runs;         
+  uint64 priority;
 };

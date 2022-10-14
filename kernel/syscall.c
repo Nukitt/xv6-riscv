@@ -106,6 +106,7 @@ extern uint64 sys_sigalarm(void);
 extern uint64 sys_sigreturn(void);
 extern uint64 sys_waitx(void);
 extern uint64 sys_settickets(void);
+extern uint64 sys_setpriority(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -136,6 +137,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_sigreturn]   sys_sigreturn,
 [SYS_waitx]   sys_waitx,
 [SYS_settickets]  sys_settickets,
+[SYS_setpriority] sys_setpriority,
 };
 
 // Array of names for system calls.
@@ -166,6 +168,7 @@ static char *syscall_name[] = {
 [SYS_sigreturn]   "sigreturn",
 [SYS_waitx]   "waitx",
 [SYS_settickets]  "settickets",
+[SYS_setpriority] "setpriority",
 };
 
 // Array of number of arguments for each system call.
@@ -196,6 +199,7 @@ static int syscall_nargs[] = {
 [SYS_sigreturn]   0,
 [SYS_waitx]   2,
 [SYS_settickets]  1,
+[SYS_setpriority] 2,
 };
 
 void

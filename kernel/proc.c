@@ -124,9 +124,14 @@ found:
   p->pid = allocpid();
   p->state = USED;
   p->currentticks = 0;
-  p->cur_time = ticks;
-  p->tickets = 1;
-  
+  p->crt_time = ticks;
+  p->run_time = 0;
+  p->start_time = 0;
+  p->sleep_time = 0;
+  p->n_runs = 0;
+  p->priority = 60;
+  p->end_time = 0;
+
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -147,9 +152,6 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
-  p->run_time = 0;
-  p->end_time = 0;
-  p->cur_time = ticks;
   return p;
 }
 
@@ -437,6 +439,38 @@ wait(uint64 addr)
   }
 }
 
+int
+setpriority(int new_priority, int pid)
+{
+  int prev_priority;
+  prev_priority = 0;
+  struct proc* p;
+  for(p = proc; p < &proc[NPROC]; p++)
+  {
+    acquire(&p->lock);
+    if(p->pid == pid)
+    {
+      prev_priority = p->priority;
+      p->priority = new_priority;
+
+      p->sleep_time = 0;
+      p->run_time = 0;
+
+      int reschedule = 0;
+      if(new_priority < prev_priority){
+        reschedule = 1;
+      }
+
+      release(&p->lock);
+      if(reschedule){
+        yield();
+      }
+      break;
+    }
+    release(&p->lock);
+  }
+  return prev_priority;
+}
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
 int
@@ -460,7 +494,7 @@ waitx(uint64 addr, uint* w_time, uint* r_time)
           // Found one.
           pid = np->pid;
           *r_time = np->run_time;
-          *w_time = np->end_time - np->cur_time - np->run_time;
+          *w_time = np->end_time - np->crt_time - np->run_time;
           if(addr != 0 && copyout(p->pagetable, addr, (char *)&np->xstate,
                                   sizeof(np->xstate)) < 0) {
             release(&np->lock);
@@ -569,18 +603,11 @@ scheduler(void)
       for(p = proc; p < &proc[NPROC]; p++) {
         acquire(&p->lock);
         if(p->state == RUNNABLE) {
-          // if(!first || p->cur_time < first->cur_time){
-
           if( earliest_p == 0) {
             earliest_p = p;
             continue;
           }
           else if(earliest_p->cur_time > p->cur_time){
-
-            // if(first != 0){
-            //   release(&first->lock);
-            // }
-
             release(&earliest_p->lock);
 
             earliest_p = p;
@@ -648,7 +675,88 @@ scheduler(void)
       release(&chosen_p->lock);
     }
   }
+  #endif
   
+  #ifdef PBS
+    for(;;){
+      // Avoid deadlock by ensuring that devices can interrupt.
+      intr_on();
+
+      struct proc* high_priority_proc;
+      high_priority_proc = 0;
+      int dynamic_priority = 101;     // Lower dynamic_priority value => higher preference in scheduling
+
+      for(p = proc; p < &proc[NPROC]; p++) {
+
+        acquire(&p->lock);
+
+        int nice;
+
+        if(p->run_time + p->sleep_time > 0){
+          nice = p->sleep_time * 10;
+          nice = nice / (p->sleep_time + p->run_time);
+        }
+        else{
+          nice = 5;               // Defualt value of nice;
+        }
+
+        int curr_dynamic_priority;
+        uint64 max(uint64 a, uint64 b){ return (a>b)?a:b; }
+        uint64 min(uint64 a, uint64 b){ return (a<b)?a:b; }
+        curr_dynamic_priority = max(0, min(p->priority - nice + 5, 100));
+
+        if(p->state == RUNNABLE){
+
+          int dp_check = 0;
+          int check_1 = 0, check_2 = 0;
+          
+          if(dynamic_priority == curr_dynamic_priority){
+            dp_check = 1;
+          }
+
+          // If 2 processes have same dynamic priority, we check for number of times the process has been scheduled
+          if(dp_check && p->n_runs < high_priority_proc->n_runs){
+            check_1 = 1;
+          }
+
+          // If 2 processes have same dynamic priority and number of runs
+          // we check for creation time
+          if(dp_check && high_priority_proc->n_runs == p->n_runs && p->crt_time < high_priority_proc->crt_time){
+            check_2 = 1;
+          }
+          
+          if(high_priority_proc == 0 || curr_dynamic_priority > dynamic_priority || (dp_check && check_1) || check_2){
+            
+            if(high_priority_proc != 0){
+              release(&high_priority_proc->lock);
+            }
+
+            dynamic_priority = curr_dynamic_priority;
+            high_priority_proc = p;
+            continue;
+
+          }
+        }
+        
+        release(&p->lock);
+
+      }
+
+      if(high_priority_proc != 0){
+
+        high_priority_proc->state = RUNNING;
+        high_priority_proc->start_time = ticks;
+        high_priority_proc->n_runs++;
+        high_priority_proc->sleep_time = 0;
+        c->proc = high_priority_proc;
+        swtch(&c->context, &high_priority_proc->context);
+
+        c->proc = 0;
+        release(&high_priority_proc->lock);
+
+      }
+    }
+    
   #endif
 }
 
