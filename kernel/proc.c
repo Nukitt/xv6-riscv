@@ -541,32 +541,41 @@ scheduler(void)
   for(;;){
       // Avoid deadlock by ensuring that devices can interrupt.
       intr_on();
-      struct proc* first_proc;
-      first_proc = 0;
+      struct proc* earliest_p;
+      earliest_p = 0;
+      // earliest_p->cur_time = 0xffffffff;
       for(p = proc; p < &proc[NPROC]; p++) {
         acquire(&p->lock);
         if(p->state == RUNNABLE) {
-          if(!first_proc || p->cur_time < first_proc->cur_time){
+          // if(!first || p->cur_time < first->cur_time){
 
-            if(first_proc != 0){
-              release(&first_proc->lock);
-            }
+          if( earliest_p == 0) {
+            earliest_p = p;
+            continue;
+          }
+          else if(earliest_p->cur_time > p->cur_time){
 
-            first_proc = p;
+            // if(first != 0){
+            //   release(&first->lock);
+            // }
+
+            release(&earliest_p->lock);
+
+            earliest_p = p;
             continue;
           }
         }
         release(&p->lock);
       }
 
-      if(first_proc != 0){
+      if(earliest_p != 0){
 
-        first_proc->state = RUNNING;
-        c->proc = first_proc;
-        swtch(&c->context, &first_proc->context);
+        earliest_p->state = RUNNING;
+        c->proc = earliest_p;
+        swtch(&c->context, &earliest_p->context);
         c->proc = 0;
 
-        release(&first_proc->lock);
+        release(&earliest_p->lock);
       }
     }
 

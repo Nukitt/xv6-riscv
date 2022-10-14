@@ -3,14 +3,25 @@
 #include "../kernel/stat.h"
 #include "user.h"
 
-int is_num(char s[])
+int integer_check(char s[])
 {
-    for(int i = 0; s[i] != '\0' ; i++)
+    // int flag = 1;
+    // for(int i = 0; s[i] != '\0' ; i++)
+    // {
+    //     if(s[i] < '0' || s[i] > '9')
+    //     {
+    //         return 0;
+    //     }
+    // }
+
+    int i=0;
+    while(s[i] != '\0')
     {
         if(s[i] < '0' || s[i] > '9')
         {
             return 0;
         }
+        i++;
     }
 
     return 1;
@@ -21,30 +32,30 @@ int main(int argc, char*argv[])
 {
     char *nargv[MAXARG];
 
-    int check;
-    check = is_num(argv[1]);
+    int flag,fail;
+    flag = integer_check(argv[1]);
     
     // checking for incorrect input
-    if(argc < 3 || check == 0)
+    if(argc < 3 || !flag)
     {
-        fprintf(2, "Incorrect Input !\n");
-        fprintf(2, "Correct usage: strace <mask> <command>\n");
+        fprintf(2, "Incorrect Syntax\n");
+        fprintf(2, "Correct Syntax: strace <mask> <command>\n");
         exit(1);
     }
 
-    int temp, temp_num;
-    temp_num = atoi(argv[1]);
-    temp = trace(temp_num);
+    int mask = atoi(argv[1]);
+    fail = trace(mask);
 
-    if(temp < 0)
+    if(fail < 0)
     {
-        fprintf(2, "strace: trace failed\n");
+        fprintf(2, "strace: Trace Failed\n");
     }
 
     // copying the command
-    for(int i = 2; i < argc && i < MAXARG; i++)
+    for(int i=0;i<argc-2 && i< MAXARG-2;i++)
     {
-        nargv[i - 2] = argv[i];
+        // printf(1,"%s ",nargv[i]);
+        nargv[i] = argv[i+2];
     }
 
     exec(nargv[0], nargv);   // executing command
