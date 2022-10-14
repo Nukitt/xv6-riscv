@@ -44,10 +44,10 @@ sys_waitx(void)
   argaddr(1, &addr1); // user virtual memory
   argaddr(2, &addr2);
   int ret = waitx(addr, &w_time, &r_time);
-  struct proc* p = myproc();
-  if (copyout(p->pagetable, addr1,(char*)&w_time, sizeof(int)) < 0)
+  struct proc *p = myproc();
+  if (copyout(p->pagetable, addr1, (char *)&w_time, sizeof(int)) < 0)
     return -1;
-  if (copyout(p->pagetable, addr2,(char*)&r_time, sizeof(int)) < 0)
+  if (copyout(p->pagetable, addr2, (char *)&r_time, sizeof(int)) < 0)
     return -1;
   return ret;
 }
@@ -146,4 +146,20 @@ uint64 sys_sigreturn(void)
   p->alarm_on = 0;
   p->currentticks = 0;
   return p->trapframe->a0;
+}
+uint64
+sys_setpriority()
+{
+  int pid, priority;
+  int arg_num[2] = {0, 1};
+
+  argint(arg_num[0], &priority);
+  if (priority < 0)
+    return -1;
+
+  argint(arg_num[1], &pid);
+  if (pid < 0)
+    return -1;
+
+  return setpriority(priority, pid);
 }
