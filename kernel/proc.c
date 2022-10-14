@@ -518,7 +518,6 @@ scheduler(void)
   for(;;){
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
-      printf("RR\n");
 
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
@@ -538,17 +537,17 @@ scheduler(void)
     }
   }
   #endif
+
   #ifdef FCFS
   for(;;){
       // Avoid deadlock by ensuring that devices can interrupt.
       intr_on();
-      printf("FCFS\n");
       struct proc* first_proc;
       first_proc = 0;
       for(p = proc; p < &proc[NPROC]; p++) {
         acquire(&p->lock);
         if(p->state == RUNNABLE) {
-          if(!first_proc || p->ctime < first_proc->ctime){
+          if(!first_proc || p->cur_time < first_proc->cur_time){
 
             if(first_proc != 0){
               release(&first_proc->lock);
